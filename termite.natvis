@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="termite::Expected&lt;*,*&gt;">
+    <DisplayString Condition="!has_val_">Unexpected {unex_}</DisplayString>
+    <DisplayString Condition="strcmp(&quot;$T1&quot;,&quot;void&quot;)==0">Expected</DisplayString>
+    <DisplayString Condition="strcmp(&quot;$T1&quot;,&quot;void&quot;)!=0">Expected {val_}</DisplayString>
+
+    <Expand>
+      <Item Name="Unexpected value" Condition="!has_val_">unex_</Item>
+      <Item Name="Expected value" Condition="strcmp(&quot;$T1&quot;,&quot;void&quot;)!=0">val_</Item>
+    </Expand>
+  </Type>
+</AutoVisualizer>

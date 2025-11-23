@@ -1,0 +1,12 @@
+\#*
+.\#*
+/build/
+/.cache/
+
+CMakeFiles/
+CTestTestfile.cmake
+cmake_install.cmake
+termite_config_version.cmake
+termite_config.cmake
+
+Makefile
