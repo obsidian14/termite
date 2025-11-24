@@ -131,4 +131,9 @@ TEST_CASE("Expected test suites", "[expected]") {
     REQUIRE(!e);
     REQUIRE(e.Error() == 12);
   }
+  {
+    Expected<void, int> e = Unexpected(42);
+    REQUIRE(!e);
+    REQUIRE(e.Error() == 42);
+  }
 }

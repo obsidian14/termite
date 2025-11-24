@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.27 FATAL_ERROR)
-project(termite VERSION 0.0.1 LANGUAGES CXX)
+project(termite VERSION 0.0.2 LANGUAGES CXX)
 
 include(CMakeDependentOption)
 include(CTest)
@@ -80,15 +80,21 @@ if(TERMITE_BUILD_PACKAGE)
 
   install(DIRECTORY "include/" TYPE INCLUDE)
 
-  list(APPEND sourceGenerators TBZ2 TGZ TXZ ZIP)
-  list(APPEND binaryGenerators "DEB")
+  list(APPEND sourceGenerators "TGZ" "ZIP")
+  list(APPEND binaryGenerators "DEB" "RPM")
 
   set(CPACK_SOURCE_GENERATOR ${sourceGenerators})
   set(CPACK_GENERATOR ${binaryGenerators})
   set(CPACK_PACKAGE_FILE_NAME "${PROJECT_NAME}_${PROJECT_VERSION}")
   set(CPACK_SOURCE_PACKAGE_FILE_NAME "${CPACK_PACKAGE_FILE_NAME}")
   set(CPACK_DEBIAN_PACKAGE_MAINTAINER "obsidian")
-  list(APPEND CPACK_SOURCE_IGNORE_FILES /.git/ /build/ .gitignore)
+  list(APPEND CPACK_SOURCE_IGNORE_FILES
+    /.github/
+    /.git/
+    /build/
+    /.cache/
+    .gitignore
+  )
 
   include(CPack)
 endif()

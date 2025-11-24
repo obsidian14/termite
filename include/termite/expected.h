@@ -9,17 +9,17 @@
 
 #ifndef TERMITE_ASSERT
 #ifdef __GNUC__
-#define TERMITE_UNREACHABLE (__builtin_unreachable() )
+#define TERMITE_UNREACHABLE (__builtin_unreachable())
 #elif defined(_MSC_VER)
-#define TERMITE_UNREACHABLE (__assume(false) )
+#define TERMITE_UNREACHABLE (__assume(false))
 #else
 #define TERMITE_UNREACHABLE ((void)0)
 #endif
 
-#define TERMITE_ASSERT(cond)                          \
+#define TERMITE_ASSERT(cond)                                        \
   do {                                                              \
     if (std::is_constant_evaluated() && !static_cast<bool>(cond)) { \
-      TERMITE_UNREACHABLE;                            \
+      TERMITE_UNREACHABLE;                                          \
     }                                                               \
   } while (false)
 #endif
@@ -947,7 +947,7 @@ class Expected<T, E> {
              (!std::is_trivially_copy_constructible_v<E>)
       : has_val_(rhs.HasValue()) {
     if (!rhs.HasValue()) {
-      std::construct_at(std::addressof(unex_), rhs.Error());
+      std::construct_at(std::addressof(Unex()), rhs.Error());
     }
   }
 
@@ -962,7 +962,7 @@ class Expected<T, E> {
              (!std::is_trivially_move_constructible_v<E>)
       : has_val_(rhs.HasValue()) {
     if (!rhs.HasValue()) {
-      std::construct_at(std::addressof(unex_), std::move(rhs.Error()));
+      std::construct_at(std::addressof(Unex()), std::move(rhs.Error()));
     }
   }
 
@@ -979,7 +979,7 @@ class Expected<T, E> {
       Expected(const Expected<U, G>& rhs)
       : has_val_(rhs.HasValue()) {
     if (!rhs.HasValue()) {
-      std::construct_at(std::addressof(unex_),
+      std::construct_at(std::addressof(Unex()),
                         std::forward<const G&>(rhs.Error()));
     }
   }
@@ -991,7 +991,7 @@ class Expected<T, E> {
       Expected(Expected<U, G>&& rhs)
       : has_val_(rhs.HasValue()) {
     if (!rhs.HasValue()) {
-      std::construct_at(std::addressof(unex_), std::forward<G>(rhs.Error()));
+      std::construct_at(std::addressof(Unex()), std::forward<G>(rhs.Error()));
     }
   }
 
@@ -999,29 +999,46 @@ class Expected<T, E> {
     requires std::is_constructible_v<E, const G&>
   constexpr explicit(!std::is_convertible_v<const G&, E>)
       Expected(const Unexpected<G>& e)
-      : unex_(std::forward<const G&>(e.Error())), has_val_(false) {}
+      : has_val_(false) {
+    if (!HasValue()) {
+      std::construct_at(std::addressof(Unex()),
+                        std::forward<const G&>(e.Error()));
+    }
+  }
 
   template <typename G>
     requires std::is_constructible_v<E, G>
   constexpr explicit(!std::is_convertible_v<G, E>) Expected(Unexpected<G>&& e)
-      : unex_(std::forward<G>(e.Error())), has_val_(false) {}
+      : has_val_(false) {
+    if (!HasValue()) {
+      std::construct_at(std::addressof(Unex()), std::forward<G>(e.Error()));
+    }
+  }
 
   constexpr explicit Expected(InPlaceTag) noexcept : has_val_(true) {}
 
   template <typename... Args>
     requires std::is_constructible_v<E, Args...>
-  constexpr explicit Expected(UnexpectTag, Args&&... args)
-      : unex_(std::forward<Args>(args)...), has_val_(false) {}
+  constexpr explicit Expected(UnexpectTag, Args&&... args) : has_val_(false) {
+    if (!HasValue()) {
+      std::construct_at(std::addressof(Unex()), std::forward<Args>(args)...);
+    }
+  }
 
   template <typename U, typename... Args>
     requires std::is_constructible_v<E, std::initializer_list<U>&, Args...>
   constexpr explicit Expected(UnexpectTag, std::initializer_list<U> il,
                               Args&&... args)
-      : unex_(il, std::forward<Args>(args)...), has_val_(false) {}
+      : has_val_(false) {
+    if (!HasValue()) {
+      std::construct_at(std::addressof(Unex()), il,
+                        std::forward<Args>(args)...);
+    }
+  }
 
   constexpr ~Expected() {
     if (!HasValue()) {
-      std::destroy_at(std::addressof(unex_));
+      std::destroy_at(std::addressof(Unex()));
     }
   }
 
@@ -1040,13 +1057,13 @@ class Expected<T, E> {
 
     if (HasValue() && rhs.HasValue()) {
     } else if (HasValue()) {
-      std::construct_at(std::addressof(unex_), rhs.Error());
+      std::construct_at(std::addressof(Unex()), rhs.Error());
       has_val_ = false;
     } else if (rhs.HasValue()) {
-      std::destroy_at(std::addressof(unex_));
+      std::destroy_at(std::addressof(Unex()));
       has_val_ = true;
     } else {
-      unex_ = rhs.Error();
+      Unex() = rhs.Error();
     }
     return *this;
   }
@@ -1062,13 +1079,13 @@ class Expected<T, E> {
 
     if (HasValue() && rhs.HasValue()) {
     } else if (HasValue()) {
-      std::construct_at(std::addressof(unex_), std::move(rhs.Error()));
+      std::construct_at(std::addressof(Unex()), std::move(rhs.Error()));
       has_val_ = false;
     } else if (rhs.HasValue()) {
-      std::destroy_at(std::addressof(unex_));
+      std::destroy_at(std::addressof(Unex()));
       has_val_ = true;
     } else {
-      unex_ = std::move(rhs.Error());
+      Unex() = std::move(rhs.Error());
     }
     return *this;
   }
@@ -1078,11 +1095,11 @@ class Expected<T, E> {
              std::is_assignable_v<E&, const G&>
   constexpr Expected& operator=(const Unexpected<G>& e) {
     if (HasValue()) {
-      std::construct_at(std::addressof(unex_),
+      std::construct_at(std::addressof(Unex()),
                         std::forward<const G&>(e.Error()));
       has_val_ = false;
     } else {
-      unex_ = std::forward<const G&>(e.Error());
+      Unex() = std::forward<const G&>(e.Error());
     }
     return *this;
   }
@@ -1091,17 +1108,17 @@ class Expected<T, E> {
     requires std::is_constructible_v<E, G> && std::is_assignable_v<E&, G>
   constexpr Expected& operator=(Unexpected<G>&& e) {
     if (HasValue()) {
-      std::construct_at(std::addressof(unex_), std::forward<G>(e.Error()));
+      std::construct_at(std::addressof(Unex()), std::forward<G>(e.Error()));
       has_val_ = false;
     } else {
-      unex_ = std::forward<G>(e.Error());
+      Unex() = std::forward<G>(e.Error());
     }
     return *this;
   }
 
   constexpr void Emplace() noexcept {
     if (!HasValue()) {
-      std::destroy_at(std::addressof(unex_));
+      std::destroy_at(std::addressof(Unex()));
       has_val_ = true;
     }
   }
@@ -1113,15 +1130,15 @@ class Expected<T, E> {
   {
     if (HasValue() && rhs.HasValue()) {
     } else if (HasValue()) {
-      std::construct_at(std::addressof(unex_), std::move(rhs.unex_));
-      std::destroy_at(std::addressof(rhs.unex_));
+      std::construct_at(std::addressof(Unex()), std::move(rhs.Unex()));
+      std::destroy_at(std::addressof(rhs.Unex()));
       has_val_ = false;
       rhs.has_val_ = true;
     } else if (rhs.HasValue()) {
       rhs.swap(*this);
     } else {
       using std::swap;
-      swap(unex_, rhs.unex_);
+      swap(Unex(), rhs.Unex());
     }
   }
 
@@ -1136,28 +1153,26 @@ class Expected<T, E> {
 
   constexpr bool HasValue() const noexcept { return has_val_; }
 
-  constexpr void operator*() const noexcept {
-    TERMITE_ASSERT(has_val_);
-  }
+  constexpr void operator*() const noexcept { TERMITE_ASSERT(has_val_); }
 
   constexpr const E& Error() const& noexcept {
     TERMITE_ASSERT(!has_val_);
-    return unex_;
+    return Unex();
   }
 
   constexpr E& Error() & noexcept {
     TERMITE_ASSERT(!has_val_);
-    return unex_;
+    return Unex();
   }
 
   constexpr E&& Error() && noexcept {
     TERMITE_ASSERT(!has_val_);
-    return std::move(unex_);
+    return std::move(Unex());
   }
 
   constexpr const E&& Error() const&& noexcept {
     TERMITE_ASSERT(!has_val_);
-    return std::move(unex_);
+    return std::move(Unex());
   }
 
   template <typename G = E>
@@ -1426,8 +1441,20 @@ class Expected<T, E> {
   }
 
  private:
+  constexpr E& Unex() & noexcept { return *reinterpret_cast<E*>(unex_raw_); }
+
+  constexpr const E& Unex() const& noexcept {
+    return *reinterpret_cast<const E*>(unex_raw_);
+  }
+
+  constexpr E&& Unex() && noexcept { return *reinterpret_cast<E*>(unex_raw_); }
+
+  constexpr const E&& Unex() const&& noexcept {
+    return *reinterpret_cast<const E*>(unex_raw_);
+  }
+
   union {
-    E unex_;
+    alignas(alignof(E)) std::byte unex_raw_[sizeof(E)];
   };
   bool has_val_;
 };
